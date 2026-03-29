@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>FitnessCracker — Performance Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg: #07111f;
+    --bg2: #0d1f35;
+    --bg3: #112440;
+    --border: rgba(99,162,255,0.12);
+    --border2: rgba(99,162,255,0.22);
+    --accent: #3b82f6;
+    --accent2: #60a5fa;
+    --accent3: #93c5fd;
+    --text: #e8f0fe;
+    --text2: #94afc7;
+    --text3: #4a6a8a;
+    --success: #34d399;
+    --warning: #fbbf24;
+    --danger: #f87171;
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  /* ── LOGIN ── */
+  #login-screen {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(59,130,246,0.15) 0%, transparent 70%), var(--bg);
+  }
+  .login-card {
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    border-radius: 20px;
+    padding: 48px 40px;
+    width: 100%;
+    max-width: 380px;
+    text-align: center;
+  }
+  .login-logo {
+    width: 52px; height: 52px;
+    background: linear-gradient(135deg, var(--accent), #1d4ed8);
+    border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; font-weight: 600; color: #fff;
+    margin: 0 auto 20px;
+    letter-spacing: -1px;
+  }
+  .login-card h1 { font-size: 22px; font-weight: 600; margin-bottom: 6px; }
+  .login-card p { color: var(--text2); font-size: 13px; margin-bottom: 32px; }
+  .login-card input {
+    width: 100%; padding: 11px 14px;
+    background: var(--bg3); border: 1px solid var(--border2);
+    border-radius: var(--radius-sm); color: var(--text);
+    font-family: inherit; font-size: 14px; margin-bottom: 12px;
+    transition: border-color .2s;
+  }
+  .login-card input:focus { outline: none; border-color: var(--accent); }
+  .login-hint { font-size: 11px; color: var(--text3); margin-bottom: 20px; text-align: left; }
+  .btn {
+    padding: 11px 20px; border-radius: var(--radius-sm);
+    font-family: inherit; font-size: 14px; font-weight: 500;
+    cursor: pointer; transition: all .15s; border: none;
+  }
+  .btn-primary {
+    background: var(--accent); color: #fff; width: 100%;
+  }
+  .btn-primary:hover { background: #2563eb; }
+  .btn-secondary {
+    background: var(--bg3); color: var(--text2);
+    border: 1px solid var(--border2);
+  }
+  .btn-secondary:hover { border-color: var(--accent); color: var(--text); }
+  #login-error { color: var(--danger); font-size: 12px; margin-bottom: 12px; display: none; }
+
+  /* ── APP SHELL ── */
+  #app { display: none; flex-direction: column; min-height: 100vh; }
+
+  /* ── TOPBAR ── */
+  .topbar {
+    display: flex; align-items: center; gap: 12px;
+    padding: 0 20px; height: 56px;
+    background: var(--bg2); border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .topbar-logo {
+    width: 32px; height: 32px;
+    background: linear-gradient(135deg, var(--accent), #1d4ed8);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 600; color: #fff;
+    flex-shrink: 0;
+  }
+  .topbar-title { font-size: 15px; font-weight: 600; margin-right: 8px; }
+  .topbar-sep { color: var(--text3); }
+  .topbar-sub { font-size: 13px; color: var(--text2); }
+  .topbar-spacer { flex: 1; }
+
+  select.filter-select {
+    background: var(--bg3); border: 1px solid var(--border2);
+    color: var(--text); padding: 6px 10px; border-radius: var(--radius-sm);
+    font-family: inherit; font-size: 13px; cursor: pointer;
+  }
+  select.filter-select:focus { outline: none; border-color: var(--accent); }
+
+  .topbar-btn {
+    padding: 6px 12px; background: var(--bg3);
+    border: 1px solid var(--border2); border-radius: var(--radius-sm);
+    color: var(--text2); font-size: 12px; cursor: pointer;
+    font-family: inherit; transition: all .15s;
+  }
+  .topbar-btn:hover { border-color: var(--accent); color: var(--text); }
+  .topbar-btn.active { border-color: var(--accent); color: var(--accent); }
+
+  /* ── TABS ── */
+  .tabs {
+    display: flex; gap: 4px;
+    padding: 10px 20px 0;
+    background: var(--bg2); border-bottom: 1px solid var(--border);
+  }
+  .tab {
+    padding: 8px 16px; border-radius: 8px 8px 0 0;
+    font-size: 13px; font-weight: 500; cursor: pointer;
+    color: var(--text2); border: 1px solid transparent;
+    border-bottom: none; transition: all .15s;
+    background: transparent;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active {
+    background: var(--bg); color: var(--accent2);
+    border-color: var(--border2);
+    border-bottom-color: var(--bg);
+  }
+
+  /* ── MAIN ── */
+  .main { flex: 1; padding: 20px; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 18px;
+  }
+  .card-title {
+    font-size: 11px; font-weight: 600; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--text3); margin-bottom: 14px;
+  }
+
+  /* ── OVERVIEW GRID ── */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 12px; margin-bottom: 20px;
+  }
+  .kpi-card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px;
+    transition: border-color .15s;
+  }
+  .kpi-card:hover { border-color: var(--border2); }
+  .kpi-label { font-size: 11px; color: var(--text3); margin-bottom: 8px; text-transform: uppercase; letter-spacing: .06em; }
+  .kpi-value { font-size: 26px; font-weight: 600; font-family: 'DM Mono', monospace; line-height: 1; margin-bottom: 6px; }
+  .kpi-value.blue { color: var(--accent2); }
+  .kpi-value.green { color: var(--success); }
+  .kpi-value.amber { color: var(--warning); }
+  .kpi-sub { font-size: 11px; color: var(--text3); }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+  @media (max-width: 900px) { .two-col, .three-col { grid-template-columns: 1fr; } }
+
+  /* ── SCORE RING ── */
+  .score-ring-wrap {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; padding: 10px 0;
+  }
+  .score-ring-outer {
+    position: relative; width: 120px; height: 120px;
+  }
+  .score-ring-num {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 28px; font-weight: 600;
+    font-family: 'DM Mono', monospace; color: var(--accent2);
+  }
+  .score-label { font-size: 12px; color: var(--text2); margin-top: 8px; }
+
+  /* ── BADGE ── */
+  .badge {
+    display: inline-block; padding: 2px 8px; border-radius: 20px;
+    font-size: 11px; font-weight: 500;
+  }
+  .badge-blue { background: rgba(59,130,246,.15); color: var(--accent2); }
+  .badge-green { background: rgba(52,211,153,.15); color: var(--success); }
+  .badge-amber { background: rgba(251,191,36,.15); color: var(--warning); }
+  .badge-red { background: rgba(248,113,113,.15); color: var(--danger); }
+
+  /* ── CLUSTER BARS ── */
+  .cluster-row {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 10px;
+  }
+  .cluster-label { font-size: 12px; color: var(--text2); width: 140px; flex-shrink: 0; }
+  .cluster-bar-wrap { flex: 1; background: var(--bg3); border-radius: 4px; height: 8px; }
+  .cluster-bar { height: 8px; border-radius: 4px; background: var(--accent); transition: width .6s ease; }
+  .cluster-val { font-size: 12px; color: var(--text); font-family: 'DM Mono'; width: 16px; }
+
+  /* ── RANKING TABLE ── */
+  .rank-table { width: 100%; border-collapse: collapse; }
+  .rank-table th {
+    font-size: 11px; color: var(--text3); text-align: left;
+    padding: 6px 10px; border-bottom: 1px solid var(--border);
+    text-transform: uppercase; letter-spacing: .06em;
+  }
+  .rank-table td { padding: 8px 10px; font-size: 13px; border-bottom: 1px solid var(--border); }
+  .rank-table tr:last-child td { border-bottom: none; }
+  .rank-table tr.highlight td { background: rgba(59,130,246,.07); }
+  .rank-num { font-family: 'DM Mono'; color: var(--text3); font-size: 12px; }
+  .rank-name { font-weight: 500; }
+  .rank-score { font-family: 'DM Mono'; color: var(--accent2); }
+
+  /* ── CHAT ── */
+  .chat-wrap { display: flex; flex-direction: column; height: calc(100vh - 160px); }
+  .chat-messages {
+    flex: 1; overflow-y: auto; padding: 16px;
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: var(--radius); margin-bottom: 12px;
+  }
+  .chat-msg { margin-bottom: 14px; }
+  .chat-msg-role { font-size: 11px; color: var(--text3); margin-bottom: 4px; text-transform: uppercase; letter-spacing: .06em; }
+  .chat-msg-body {
+    padding: 10px 14px; border-radius: var(--radius-sm);
+    font-size: 13px; line-height: 1.6; max-width: 85%;
+  }
+  .chat-msg.user .chat-msg-body {
+    background: rgba(59,130,246,.15); color: var(--text);
+    margin-left: auto;
+  }
+  .chat-msg.assistant .chat-msg-body {
+    background: var(--bg3); color: var(--text);
+  }
+  .chat-input-row { display: flex; gap: 8px; }
+  .chat-input {
+    flex: 1; padding: 11px 14px;
+    background: var(--bg3); border: 1px solid var(--border2);
+    border-radius: var(--radius-sm); color: var(--text);
+    font-family: inherit; font-size: 14px; resize: none;
+  }
+  .chat-input:focus { outline: none; border-color: var(--accent); }
+
+  /* ── API KEY MODAL ── */
+  .modal-bg {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.6); backdrop-filter: blur(4px);
+    display: flex; align-items: center; justify-content: center; z-index: 200;
+  }
+  .modal {
+    background: var(--bg2); border: 1px solid var(--border2);
+    border-radius: 16px; padding: 32px; width: 420px; max-width: 95vw;
+  }
+  .modal h3 { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+  .modal p { font-size: 13px; color: var(--text2); margin-bottom: 20px; line-height: 1.5; }
+  .modal input {
+    width: 100%; padding: 10px 14px;
+    background: var(--bg3); border: 1px solid var(--border2);
+    border-radius: var(--radius-sm); color: var(--text);
+    font-family: 'DM Mono', monospace; font-size: 13px; margin-bottom: 16px;
+  }
+  .modal input:focus { outline: none; border-color: var(--accent); }
+  .modal-btns { display: flex; gap: 8px; justify-content: flex-end; }
+
+  /* ── IMPORT MODAL ── */
+  .import-zone {
+    border: 2px dashed var(--border2); border-radius: var(--radius);
+    padding: 40px; text-align: center; cursor: pointer;
+    transition: border-color .2s; margin-bottom: 16px;
+  }
+  .import-zone:hover, .import-zone.drag { border-color: var(--accent); }
+  .import-zone .icon { font-size: 32px; margin-bottom: 10px; }
+  .import-zone p { color: var(--text2); font-size: 13px; }
+
+  /* ── EMPTY STATE ── */
+  .empty {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; padding: 60px 20px; text-align: center;
+  }
+  .empty .icon { font-size: 40px; margin-bottom: 16px; opacity: .4; }
+  .empty h3 { font-size: 16px; font-weight: 500; margin-bottom: 8px; color: var(--text2); }
+  .empty p { font-size: 13px; color: var(--text3); }
+
+  /* ── INSIGHT BOX ── */
+  .insight-box {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: var(--radius-sm); padding: 14px 16px;
+    font-size: 13px; line-height: 1.7; color: var(--text2);
+    min-height: 60px;
+  }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--bg3); border-radius: 4px; }
+
+  canvas { max-width: 100%; }
+
+  .hidden { display: none !important; }
+
+  /* ── TOOLTIP / LOADING ── */
+  .loading-dots::after {
+    content: ''; animation: dots 1.2s infinite;
+  }
+  @keyframes dots {
+    0%   { content: '.'; }
+    33%  { content: '..'; }
+    66%  { content: '...'; }
+    100% { content: ''; }
+  }
+
+  /* ── SIZE PILLS ── */
+  .size-pill {
+    display: inline-block; padding: 2px 7px; border-radius: 4px;
+    font-size: 10px; font-weight: 600; letter-spacing: .05em;
+    background: rgba(59,130,246,.1); color: var(--accent2); border: 1px solid var(--border2);
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════ LOGIN ═══════════════════════════════ -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">FC</div>
+    <h1>FitnessCracker</h1>
+    <p>Performance Dashboard — 2026</p>
+    <p id="login-error">Credenziali non valide.</p>
+    <input type="email" id="login-email" placeholder="Email" value=""/>
+    <input type="password" id="login-pwd" placeholder="Password" value=""/>
+    <div class="login-hint">Admin: admin@fc.it &nbsp;|&nbsp; Agente: ag001@fc.it &nbsp;(pwd: admin)</div>
+    <button class="btn btn-primary" onclick="doLogin()">Accedi</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ APP ═══════════════════════════════ -->
+<div id="app">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="topbar-logo">FC</div>
+    <span class="topbar-title">FitnessCracker</span>
+    <span class="topbar-sep">·</span>
+    <span class="topbar-sub">2026</span>
+    <div class="topbar-spacer"></div>
+    <select class="filter-select" id="filter-area" onchange="applyFilters()">
+      <option value="">Tutte le aree</option>
+    </select>
+    <select class="filter-select" id="filter-size" onchange="applyFilters()">
+      <option value="">Tutte le size</option>
+      <option>S</option><option>M</option><option>L</option><option>XL</option>
+    </select>
+    <select class="filter-select" id="filter-agency" onchange="selectAgency()">
+      <option value="">— Seleziona agenzia —</option>
+    </select>
+    <button class="topbar-btn" onclick="openImport()">📊 Importa Excel</button>
+    <button class="topbar-btn" onclick="openApiKey()" id="btn-apikey">🔑 Groq API Key</button>
+    <button class="topbar-btn" onclick="doLogout()">Esci</button>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('overview')">📊 Overview</div>
+    <div class="tab" onclick="switchTab('kpi')">🎯 KPI & Spider</div>
+    <div class="tab" onclick="switchTab('cluster')">🔵 Cluster</div>
+    <div class="tab" onclick="switchTab('chat')">💬 Chat AI</div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <!-- ── OVERVIEW ── -->
+    <div id="tab-overview" class="tab-panel active">
+      <div id="overview-empty" class="empty">
+        <div class="icon">📊</div>
+        <h3>Nessuna agenzia selezionata</h3>
+        <p>Importa un file Excel e seleziona un'agenzia dal menu in alto</p>
+      </div>
+      <div id="overview-content" class="hidden">
+        <div class="kpi-grid" id="kpi-cards"></div>
+        <div class="two-col">
+          <div class="card">
+            <div class="card-title">Score globale</div>
+            <div class="score-ring-wrap">
+              <div class="score-ring-outer">
+                <canvas id="chart-score" width="120" height="120"></canvas>
+                <div class="score-ring-num" id="score-num">—</div>
+              </div>
+              <div class="score-label" id="score-label-txt">Performance complessiva</div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">✦ Key Insight AI</div>
+            <div class="insight-box" id="insight-txt">Seleziona un'agenzia e clicca Genera per ricevere l'analisi AI.</div>
+            <br/>
+            <button class="btn btn-secondary" onclick="generateInsight()" style="font-size:13px">✦ Genera insight</button>
+          </div>
+        </div>
+        <div class="two-col">
+          <div class="card">
+            <div class="card-title">New Business — Danni</div>
+            <canvas id="chart-nb" height="180"></canvas>
+          </div>
+          <div class="card">
+            <div class="card-title">Portafoglio — Composizione</div>
+            <canvas id="chart-ptf" height="180"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── KPI & SPIDER ── -->
+    <div id="tab-kpi" class="tab-panel">
+      <div id="kpi-empty" class="empty">
+        <div class="icon">🎯</div>
+        <h3>Nessuna agenzia selezionata</h3>
+        <p>Seleziona un'agenzia per visualizzare KPI e spider chart</p>
+      </div>
+      <div id="kpi-content" class="hidden">
+        <div class="three-col">
+          <div class="card">
+            <div class="card-title">Spider Statico — Solidità</div>
+            <canvas id="chart-spider-stat" height="250"></canvas>
+          </div>
+          <div class="card">
+            <div class="card-title">Spider Dinamico — Accelerazione</div>
+            <canvas id="chart-spider-din" height="250"></canvas>
+          </div>
+          <div class="card">
+            <div class="card-title">Fonti attive</div>
+            <canvas id="chart-fonti" height="250"></canvas>
+          </div>
+        </div>
+        <div class="two-col">
+          <div class="card">
+            <div class="card-title">KPI Statici vs Benchmark</div>
+            <div id="kpi-stat-bars"></div>
+          </div>
+          <div class="card">
+            <div class="card-title">KPI Dinamici vs Benchmark</div>
+            <div id="kpi-din-bars"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── CLUSTER ── -->
+    <div id="tab-cluster" class="tab-panel">
+      <div id="cluster-empty" class="empty">
+        <div class="icon">🔵</div>
+        <h3>Nessuna agenzia selezionata</h3>
+        <p>Seleziona un'agenzia per visualizzare ranking e cluster</p>
+      </div>
+      <div id="cluster-content" class="hidden">
+        <div class="two-col">
+          <div class="card">
+            <div class="card-title">Ranking nel cluster</div>
+            <div id="rank-table-wrap"></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Radar — Top 3 vs Tu</div>
+            <canvas id="chart-radar-cluster" height="250"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── CHAT ── -->
+    <div id="tab-chat" class="tab-panel">
+      <div class="chat-wrap">
+        <div class="chat-messages" id="chat-messages">
+          <div class="chat-msg assistant">
+            <div class="chat-msg-role">Coach AI</div>
+            <div class="chat-msg-body">Ciao! Sono il tuo coach AI. Seleziona un'agenzia, importa i dati e fammi una domanda — posso analizzare i KPI, la posizione nel cluster o suggerire azioni concrete.</div>
+          </div>
+        </div>
+        <div class="chat-input-row">
+          <textarea class="chat-input" id="chat-input" rows="2" placeholder="Scrivi una domanda..." onkeydown="chatKeydown(event)"></textarea>
+          <button class="btn btn-primary" onclick="sendChat()" style="padding:11px 18px">Invia</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<!-- ── IMPORT MODAL ── -->
+<div class="modal-bg hidden" id="modal-import">
+  <div class="modal">
+    <h3>📊 Importa dati Excel</h3>
+    <p>Carica il file .xlsx con i dati delle agenzie. Deve contenere un foglio chiamato <strong>DB</strong>.</p>
+    <div class="import-zone" id="import-zone" onclick="document.getElementById('file-input').click()"
+         ondragover="event.preventDefault();this.classList.add('drag')"
+         ondragleave="this.classList.remove('drag')"
+         ondrop="handleDrop(event)">
+      <div class="icon">📁</div>
+      <p>Clicca qui o trascina il file .xlsx</p>
+    </div>
+    <input type="file" id="file-input" accept=".xlsx,.xls" style="display:none" onchange="handleFile(event)"/>
+    <div style="display:flex;justify-content:flex-end">
+      <button class="btn btn-secondary" onclick="closeImport()">Chiudi</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── API KEY MODAL ── -->
+<div class="modal-bg hidden" id="modal-apikey">
+  <div class="modal">
+    <h3>🔑 Groq API Key</h3>
+    <p>Inserisci la tua chiave API Groq per abilitare insights e chat AI. La chiave viene salvata solo in questa sessione del browser.<br/><br/>Ottieni la tua key gratuita su <strong>console.groq.com</strong>.</p>
+    <input type="password" id="apikey-input" placeholder="gsk_..."/>
+    <div class="modal-btns">
+      <button class="btn btn-secondary" onclick="closeApiKey()">Annulla</button>
+      <button class="btn btn-primary" onclick="saveApiKey()">Salva</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════
+let DB = [];
+let clusterStatDB = [];
+let clusterDinDB = [];
+let currentAgency = null;
+let groqKey = '';
+let charts = {};
+let chatHistory = [];
+
+const USERS = {
+  'admin@fc.it': 'admin',
+  'ag001@fc.it': 'admin'
+};
+
+// ═══════════════════════════════════════════════════════════════
+// LOGIN
+// ═══════════════════════════════════════════════════════════════
+function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const pwd = document.getElementById('login-pwd').value;
+  if (USERS[email] && USERS[email] === pwd) {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'flex';
+    document.getElementById('login-error').style.display = 'none';
+  } else {
+    document.getElementById('login-error').style.display = 'block';
+  }
+}
+function doLogout() {
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+}
+document.getElementById('login-email').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+document.getElementById('login-pwd').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+
+// ═══════════════════════════════════════════════════════════════
+// TABS
+// ═══════════════════════════════════════════════════════════════
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t,i)=>{
+    t.classList.toggle('active', ['overview','kpi','cluster','chat'][i]===name);
+  });
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// IMPORT
+// ═══════════════════════════════════════════════════════════════
+function openImport() { document.getElementById('modal-import').classList.remove('hidden'); }
+function closeImport() { document.getElementById('modal-import').classList.add('hidden'); }
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('import-zone').classList.remove('drag');
+  const file = e.dataTransfer.files[0];
+  if (file) processFile(file);
+}
+function handleFile(e) {
+  const file = e.target.files[0];
+  if (file) processFile(file);
+}
+function processFile(file) {
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const wb = XLSX.read(e.target.result, {type:'array'});
+    if (wb.SheetNames.includes('DB')) {
+      DB = XLSX.utils.sheet_to_json(wb.Sheets['DB']);
+    }
+    if (wb.SheetNames.includes('Cluster_areaT_spiderSTAT')) {
+      clusterStatDB = XLSX.utils.sheet_to_json(wb.Sheets['Cluster_areaT_spiderSTAT']);
+    }
+    if (wb.SheetNames.includes('Cluster_areaT_spiderDIN')) {
+      clusterDinDB = XLSX.utils.sheet_to_json(wb.Sheets['Cluster_areaT_spiderDIN']);
+    }
+    populateFilters();
+    closeImport();
+    alert('✅ Dati importati: ' + DB.length + ' agenzie');
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function populateFilters() {
+  const areas = [...new Set(DB.map(r => r['AREA TERRITORIALE']).filter(Boolean))];
+  const areaEl = document.getElementById('filter-area');
+  areaEl.innerHTML = '<option value="">Tutte le aree</option>';
+  areas.forEach(a => { const o = document.createElement('option'); o.value=a; o.textContent=a; areaEl.appendChild(o); });
+  populateAgencyFilter();
+}
+
+function populateAgencyFilter() {
+  const area = document.getElementById('filter-area').value;
+  const size = document.getElementById('filter-size').value;
+  let filtered = DB;
+  if (area) filtered = filtered.filter(r => r['AREA TERRITORIALE'] === area);
+  if (size) filtered = filtered.filter(r => r['Size'] === size);
+  const el = document.getElementById('filter-agency');
+  el.innerHTML = '<option value="">— Seleziona agenzia —</option>';
+  filtered.forEach(r => {
+    const o = document.createElement('option');
+    o.value = r['Codice Gestione'];
+    o.textContent = r['Codice Gestione'] + (r['Size'] ? ' ['+r['Size']+']' : '');
+    el.appendChild(o);
+  });
+}
+
+function applyFilters() { populateAgencyFilter(); }
+
+function selectAgency() {
+  const code = document.getElementById('filter-agency').value;
+  if (!code) { currentAgency = null; showEmptyStates(); return; }
+  currentAgency = DB.find(r => r['Codice Gestione'] === code);
+  if (currentAgency) renderAll();
+}
+
+function showEmptyStates() {
+  ['overview','kpi','cluster'].forEach(s => {
+    document.getElementById(s+'-empty').classList.remove('hidden');
+    document.getElementById(s+'-content').classList.add('hidden');
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RENDER ALL
+// ═══════════════════════════════════════════════════════════════
+function renderAll() {
+  if (!currentAgency) return;
+  ['overview','kpi','cluster'].forEach(s => {
+    document.getElementById(s+'-empty').classList.add('hidden');
+    document.getElementById(s+'-content').classList.remove('hidden');
+  });
+  renderKpiCards();
+  renderScoreRing();
+  renderNBChart();
+  renderPTFChart();
+  renderSpiderStat();
+  renderSpiderDin();
+  renderFontiChart();
+  renderKpiBars();
+  renderRanking();
+  renderRadarCluster();
+}
+
+function safeNum(v) { return isNaN(Number(v)) ? 0 : Number(v); }
+function fmt(n, dec=0) { return Number(n).toLocaleString('it-IT', {maximumFractionDigits: dec}); }
+function pct(n) { return (Number(n)*100).toFixed(1)+'%'; }
+
+function renderKpiCards() {
+  const a = currentAgency;
+  const cards = [
+    { label: 'NB Danni pz', value: fmt(a['NB Danni pz 2026']), cls: 'blue', sub: 'polizze 2026' },
+    { label: 'PTF Danni pz', value: fmt(a['PTF danni pz 2026']), cls: 'blue', sub: 'portafoglio' },
+    { label: 'NB Vita premi', value: '€ '+fmt(a['NB vita premi 2026']), cls: 'green', sub: 'premi 2026' },
+    { label: 'Fonti attive D.', value: safeNum(a['Fonti attive danni 2026']), cls: 'blue', sub: 'su '+safeNum(a['N fonti'])+' totali' },
+    { label: 'N. Clienti', value: fmt(a['N clienti ']), cls: 'green', sub: 'portafoglio' },
+    { label: 'Retention', value: pct(a['Retention']), cls: 'green', sub: 'tasso rinnovo' },
+    { label: 'Cross Selling', value: pct(a['Cross selling']), cls: 'amber', sub: 'indice' },
+    { label: 'Score GT', value: safeNum(a['GT']).toFixed(1), cls: 'amber', sub: 'su 100' },
+  ];
+  document.getElementById('kpi-cards').innerHTML = cards.map(c => `
+    <div class="kpi-card">
+      <div class="kpi-label">${c.label}</div>
+      <div class="kpi-value ${c.cls}">${c.value}</div>
+      <div class="kpi-sub">${c.sub}</div>
+    </div>`).join('');
+}
+
+function renderScoreRing() {
+  const score = Math.round(safeNum(currentAgency['GT']));
+  document.getElementById('score-num').textContent = score;
+  const color = score >= 75 ? '#34d399' : score >= 50 ? '#fbbf24' : '#f87171';
+  destroyChart('chart-score');
+  charts['chart-score'] = new Chart(document.getElementById('chart-score'), {
+    type: 'doughnut',
+    data: {
+      datasets: [{
+        data: [score, 100-score],
+        backgroundColor: [color, 'rgba(255,255,255,.05)'],
+        borderWidth: 0, borderRadius: 4
+      }]
+    },
+    options: { cutout: '78%', plugins: { legend: { display: false }, tooltip: { enabled: false } }, animation: { duration: 800 } }
+  });
+}
+
+function renderNBChart() {
+  const a = currentAgency;
+  destroyChart('chart-nb');
+  charts['chart-nb'] = new Chart(document.getElementById('chart-nb'), {
+    type: 'bar',
+    data: {
+      labels: ['Motor', 'RV', 'Retail', 'Totale'],
+      datasets: [{
+        data: [safeNum(a['NB motor pz 2026']), safeNum(a['NB rv pz 2026']), safeNum(a['NB Danni ret pz 2026']), safeNum(a['NB Danni pz 2026'])],
+        backgroundColor: ['rgba(59,130,246,.6)','rgba(96,165,250,.5)','rgba(147,197,253,.4)','rgba(59,130,246,.9)'],
+        borderRadius: 6, borderSkipped: false
+      }]
+    },
+    options: chartOpts('polizze')
+  });
+}
+
+function renderPTFChart() {
+  const a = currentAgency;
+  destroyChart('chart-ptf');
+  charts['chart-ptf'] = new Chart(document.getElementById('chart-ptf'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Motor', 'RV', 'Altro Danni'],
+      datasets: [{
+        data: [safeNum(a['PTF motor pz 2026']), safeNum(a['PTF rv pz 2026']),
+               Math.max(0, safeNum(a['PTF danni pz 2026']) - safeNum(a['PTF motor pz 2026']) - safeNum(a['PTF rv pz 2026']))],
+        backgroundColor: ['rgba(59,130,246,.8)','rgba(96,165,250,.7)','rgba(147,197,253,.6)'],
+        borderWidth: 0
+      }]
+    },
+    options: { plugins: { legend: { position:'bottom', labels: { color: '#94afc7', font: { size: 11 }, boxWidth: 10 } } }, animation: { duration: 700 } }
+  });
+}
+
+function getClusterBenchmark(type) {
+  const a = currentAgency;
+  const area = a['AREA TERRITORIALE'];
+  const size = a['Size'];
+  const sheet = type === 'stat' ? clusterStatDB : clusterDinDB;
+  return sheet.find(r => r['Area Territoriale'] === area && r['Size'] === size) || null;
+}
+
+function renderSpiderStat() {
+  const a = currentAgency;
+  const labels = ['PTF Danni', 'Fonti Att.', 'NB Danni', 'NB Retail', 'NB Prot.', 'NB Inv.'];
+  const agency = [safeNum(a['Cluster_PTFDanni']), safeNum(a['Cluster_FontiAtt']), safeNum(a['Cluster_NBDanni']),
+                  safeNum(a['Cluster_NBPZRetail']), safeNum(a['Cluster_NBProt']), safeNum(a['Cluster_NBInv'])];
+  const bm = getClusterBenchmark('stat');
+  const bench = bm ? [bm['Cluster_ptf'], bm['Cluster_att'], bm['Cluster_nb'], bm['Cluster_nbretpz'], bm['Cluster_prot'], bm['Cluster_inv']] : agency.map(()=>3);
+  destroyChart('chart-spider-stat');
+  charts['chart-spider-stat'] = new Chart(document.getElementById('chart-spider-stat'), {
+    type: 'radar',
+    data: {
+      labels, datasets: [
+        { label: 'Agenzia', data: agency, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,.15)', pointBackgroundColor: '#3b82f6', borderWidth: 2 },
+        { label: 'Benchmark', data: bench, borderColor: 'rgba(148,175,199,.5)', backgroundColor: 'rgba(148,175,199,.05)', pointBackgroundColor: 'rgba(148,175,199,.5)', borderWidth: 1, borderDash: [4,4] }
+      ]
+    },
+    options: radarOpts()
+  });
+}
+
+function renderSpiderDin() {
+  const a = currentAgency;
+  const labels = ['Δ Fonti D.', 'Δ Fonti V.', 'Δ NB pz', 'Δ NB rv', 'Δ Prot.', 'Δ Inv.'];
+  const agency = [safeNum(a['Cluster_attivedanni']), safeNum(a['Cluster_Fontivita']), safeNum(a['Cluster_nbpz']),
+                  safeNum(a['Cluster_nbpzrv']), safeNum(a['Cluster_NBProt.1']), safeNum(a['Cluster_NBInv.1'])];
+  const bm = getClusterBenchmark('din');
+  const bench = bm ? [bm['Cluster_delta_attivadanni'], bm['Cluster_delta_attvita'], bm['Cluster_delta_nbpz'],
+                      bm['Cluster_delta_nbpzrv'], bm['Cluster_delta_prot'], bm['Cluster_delta_inv']] : agency.map(()=>3);
+  destroyChart('chart-spider-din');
+  charts['chart-spider-din'] = new Chart(document.getElementById('chart-spider-din'), {
+    type: 'radar',
+    data: {
+      labels, datasets: [
+        { label: 'Agenzia', data: agency, borderColor: '#34d399', backgroundColor: 'rgba(52,211,153,.12)', pointBackgroundColor: '#34d399', borderWidth: 2 },
+        { label: 'Benchmark', data: bench, borderColor: 'rgba(148,175,199,.5)', backgroundColor: 'rgba(148,175,199,.05)', pointBackgroundColor: 'rgba(148,175,199,.5)', borderWidth: 1, borderDash: [4,4] }
+      ]
+    },
+    options: radarOpts()
+  });
+}
+
+function renderFontiChart() {
+  const a = currentAgency;
+  destroyChart('chart-fonti');
+  charts['chart-fonti'] = new Chart(document.getElementById('chart-fonti'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Attive Danni', 'Inattive Danni', 'Attive Vita', 'Inattive Vita'],
+      datasets: [{
+        data: [safeNum(a['Fonti attive danni 2026']), safeNum(a['Fonti inattive danni 2026']),
+               safeNum(a['Fonti attive vita 2026']), safeNum(a['Fonti inattive vita 2026'])],
+        backgroundColor: ['rgba(59,130,246,.8)','rgba(59,130,246,.2)','rgba(52,211,153,.7)','rgba(52,211,153,.2)'],
+        borderWidth: 0
+      }]
+    },
+    options: { plugins: { legend: { position: 'bottom', labels: { color: '#94afc7', font: { size: 11 }, boxWidth: 10 } } } }
+  });
+}
+
+function renderKpiBars() {
+  const a = currentAgency;
+  const statKpis = [
+    { label: 'PTF Danni', val: safeNum(a['Cluster_PTFDanni']) },
+    { label: 'Fonti Attive', val: safeNum(a['Cluster_FontiAtt']) },
+    { label: 'NB Danni', val: safeNum(a['Cluster_NBDanni']) },
+    { label: 'NB Retail pz', val: safeNum(a['Cluster_NBPZRetail']) },
+    { label: 'NB Protezione', val: safeNum(a['Cluster_NBProt']) },
+    { label: 'NB Investimento', val: safeNum(a['Cluster_NBInv']) },
+  ];
+  const dinKpis = [
+    { label: 'Δ Fonti Danni', val: safeNum(a['Cluster_attivedanni']) },
+    { label: 'Δ Fonti Vita', val: safeNum(a['Cluster_Fontivita']) },
+    { label: 'Δ NB pz Danni', val: safeNum(a['Cluster_nbpz']) },
+    { label: 'Δ NB pz RV', val: safeNum(a['Cluster_nbpzrv']) },
+    { label: 'Δ Protezione', val: safeNum(a['Cluster_NBProt.1']) },
+    { label: 'Δ Investimento', val: safeNum(a['Cluster_NBInv.1']) },
+  ];
+  document.getElementById('kpi-stat-bars').innerHTML = statKpis.map(k => kpiBar(k.label, k.val)).join('');
+  document.getElementById('kpi-din-bars').innerHTML = dinKpis.map(k => kpiBar(k.label, k.val)).join('');
+}
+
+function kpiBar(label, val) {
+  const pct = Math.round((val / 5) * 100);
+  const color = val >= 4 ? '#34d399' : val >= 3 ? '#3b82f6' : val >= 2 ? '#fbbf24' : '#f87171';
+  return `<div class="cluster-row">
+    <div class="cluster-label">${label}</div>
+    <div class="cluster-bar-wrap"><div class="cluster-bar" style="width:${pct}%;background:${color}"></div></div>
+    <div class="cluster-val">${val}</div>
+  </div>`;
+}
+
+function renderRanking() {
+  const a = currentAgency;
+  const area = a['AREA TERRITORIALE'];
+  const size = a['Size'];
+  const cluster = DB.filter(r => r['AREA TERRITORIALE'] === area && r['Size'] === size);
+  const scored = cluster.map(r => ({ code: r['Codice Gestione'], score: safeNum(r['GT']) }))
+                        .sort((a,b) => b.score - a.score);
+  const myRank = scored.findIndex(r => r.code === a['Codice Gestione']) + 1;
+  const leader = scored[0];
+  let html = `<p style="font-size:12px;color:var(--text2);margin-bottom:12px">
+    Area: <strong>${area}</strong> · Size: <span class="size-pill">${size}</span> · 
+    ${scored.length} agenzie · Tuo rank: <strong style="color:var(--accent2)">#${myRank}</strong>
+  </p>`;
+  html += `<table class="rank-table"><thead><tr><th>#</th><th>Agenzia</th><th>Score</th></tr></thead><tbody>`;
+  scored.slice(0, 10).forEach((r, i) => {
+    const isMe = r.code === a['Codice Gestione'];
+    html += `<tr ${isMe ? 'class="highlight"' : ''}>
+      <td class="rank-num">${i+1}</td>
+      <td class="rank-name">${r.code} ${isMe ? '<span class="badge badge-blue">tu</span>' : ''}</td>
+      <td class="rank-score">${r.score.toFixed(1)}</td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  document.getElementById('rank-table-wrap').innerHTML = html;
+
+  // radar cluster
+  const top3 = scored.slice(0, 3);
+  const labels = ['PTF D.', 'Fonti Att.', 'NB Danni', 'NB Retail', 'NB Prot.', 'NB Inv.'];
+  const colors = ['rgba(59,130,246,.8)', 'rgba(52,211,153,.7)', 'rgba(251,191,36,.7)', 'rgba(248,113,113,.7)'];
+  const datasets = top3.map((r, i) => {
+    const row = DB.find(d => d['Codice Gestione'] === r.code);
+    return {
+      label: r.code,
+      data: [safeNum(row?.['Cluster_PTFDanni']), safeNum(row?.['Cluster_FontiAtt']), safeNum(row?.['Cluster_NBDanni']),
+             safeNum(row?.['Cluster_NBPZRetail']), safeNum(row?.['Cluster_NBProt']), safeNum(row?.['Cluster_NBInv'])],
+      borderColor: colors[i], backgroundColor: colors[i].replace('.8','.08').replace('.7','.08'),
+      borderWidth: 1.5, pointBackgroundColor: colors[i]
+    };
+  });
+  // add me if not in top3
+  if (!top3.find(r => r.code === a['Codice Gestione'])) {
+    datasets.push({
+      label: a['Codice Gestione'] + ' (tu)',
+      data: [safeNum(a['Cluster_PTFDanni']), safeNum(a['Cluster_FontiAtt']), safeNum(a['Cluster_NBDanni']),
+             safeNum(a['Cluster_NBPZRetail']), safeNum(a['Cluster_NBProt']), safeNum(a['Cluster_NBInv'])],
+      borderColor: '#fff', backgroundColor: 'rgba(255,255,255,.05)',
+      borderWidth: 2, borderDash: [4,4], pointBackgroundColor: '#fff'
+    });
+  }
+  destroyChart('chart-radar-cluster');
+  charts['chart-radar-cluster'] = new Chart(document.getElementById('chart-radar-cluster'), {
+    type: 'radar', data: { labels, datasets }, options: radarOpts()
+  });
+}
+
+function renderRadarCluster() {} // called inside renderRanking
+
+// ═══════════════════════════════════════════════════════════════
+// CHART HELPERS
+// ═══════════════════════════════════════════════════════════════
+function destroyChart(id) {
+  if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+}
+function chartOpts(yLabel='') {
+  return {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { color: 'rgba(99,162,255,.07)' }, ticks: { color: '#94afc7', font: { size: 11 } } },
+      y: { grid: { color: 'rgba(99,162,255,.07)' }, ticks: { color: '#94afc7', font: { size: 11 } }, title: { display: !!yLabel, text: yLabel, color: '#4a6a8a', font: { size: 11 } } }
+    }
+  };
+}
+function radarOpts() {
+  return {
+    responsive: true,
+    plugins: { legend: { position: 'bottom', labels: { color: '#94afc7', font: { size: 11 }, boxWidth: 10, padding: 8 } } },
+    scales: {
+      r: {
+        min: 0, max: 5,
+        grid: { color: 'rgba(99,162,255,.1)' },
+        angleLines: { color: 'rgba(99,162,255,.1)' },
+        pointLabels: { color: '#94afc7', font: { size: 11 } },
+        ticks: { color: '#4a6a8a', backdropColor: 'transparent', font: { size: 10 }, stepSize: 1 }
+      }
+    }
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// API KEY
+// ═══════════════════════════════════════════════════════════════
+function openApiKey() { document.getElementById('modal-apikey').classList.remove('hidden'); document.getElementById('apikey-input').value = groqKey; }
+function closeApiKey() { document.getElementById('modal-apikey').classList.add('hidden'); }
+function saveApiKey() {
+  groqKey = document.getElementById('apikey-input').value.trim();
+  document.getElementById('btn-apikey').classList.toggle('active', !!groqKey);
+  closeApiKey();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// AI — INSIGHT
+// ═══════════════════════════════════════════════════════════════
+async function generateInsight() {
+  if (!groqKey) { openApiKey(); return; }
+  if (!currentAgency) return;
+  const box = document.getElementById('insight-txt');
+  box.innerHTML = '<span class="loading-dots">Analisi in corso</span>';
+  const summary = buildAgencySummary();
+  const prompt = `Sei un coach assicurativo esperto. Analizza questa agenzia in modo conciso (max 4 bullet points):\n\n${summary}\n\nFornisci insight diretti e actionable in italiano.`;
+  const text = await callGroq(prompt);
+  box.textContent = text || 'Errore nella generazione dell\'insight.';
+}
+
+async function callGroq(userMsg, history=[]) {
+  try {
+    const messages = [...history, { role: 'user', content: userMsg }];
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + groqKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages, max_tokens: 600, temperature: 0.7 })
+    });
+    const data = await res.json();
+    return data.choices?.[0]?.message?.content || '';
+  } catch(e) { return 'Errore di connessione all\'API Groq.'; }
+}
+
+function buildAgencySummary() {
+  if (!currentAgency) return '';
+  const a = currentAgency;
+  const area = a['AREA TERRITORIALE'];
+  const size = a['Size'];
+  const cluster = DB.filter(r => r['AREA TERRITORIALE'] === area && r['Size'] === size);
+  const scored = cluster.map(r => safeNum(r['GT'])).sort((a,b)=>b-a);
+  const rank = scored.indexOf(safeNum(a['GT'])) + 1;
+  return `Agenzia: ${a['Codice Gestione']} | Area: ${area} | Size: ${size}
+Score GT: ${safeNum(a['GT']).toFixed(1)}/100 | Rank nel cluster: ${rank}/${scored.length}
+NB Danni pz 2026: ${safeNum(a['NB Danni pz 2026'])} | NB Danni pz 2025: ${safeNum(a['NB Danni pz 2025'])}
+NB Vita premi: €${fmt(a['NB vita premi 2026'])} | NB Protezione: €${fmt(a['NB prot premi 2026'])}
+Fonti attive danni: ${safeNum(a['Fonti attive danni 2026'])}/${safeNum(a['N fonti'])}
+Retention: ${pct(a['Retention'])} | Cross selling: ${pct(a['Cross selling'])}
+Cluster PTF Danni: ${safeNum(a['Cluster_PTFDanni'])}/5 | Cluster NB Danni: ${safeNum(a['Cluster_NBDanni'])}/5
+Cluster NB Protezione: ${safeNum(a['Cluster_NBProt'])}/5 | Cluster NB Investimento: ${safeNum(a['Cluster_NBInv'])}/5`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CHAT
+// ═══════════════════════════════════════════════════════════════
+async function sendChat() {
+  if (!groqKey) { openApiKey(); return; }
+  const input = document.getElementById('chat-input');
+  const msg = input.value.trim();
+  if (!msg) return;
+  input.value = '';
+  appendChatMsg('user', msg);
+  const ctx = currentAgency ? 'Contesto agenzia:\n' + buildAgencySummary() + '\n\n' : '';
+  const systemMsg = { role: 'system', content: 'Sei un coach assicurativo esperto. Rispondi in italiano in modo conciso e pratico.' + (ctx ? '\n\n' + ctx : '') };
+  chatHistory.push({ role: 'user', content: msg });
+  const typing = appendChatMsg('assistant', '...');
+  const reply = await callGroq(msg, [systemMsg, ...chatHistory.slice(-8)]);
+  typing.querySelector('.chat-msg-body').textContent = reply;
+  chatHistory.push({ role: 'assistant', content: reply });
+}
+
+function appendChatMsg(role, text) {
+  const wrap = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  div.className = 'chat-msg ' + role;
+  div.innerHTML = `<div class="chat-msg-role">${role === 'user' ? 'Tu' : 'Coach AI'}</div><div class="chat-msg-body">${text}</div>`;
+  wrap.appendChild(div);
+  wrap.scrollTop = wrap.scrollHeight;
+  return div;
+}
+
+function chatKeydown(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); } }
+</script>
+</body>
+</html>
